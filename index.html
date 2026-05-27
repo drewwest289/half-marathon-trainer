@@ -240,7 +240,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     </div>
 
     <div class="card">
-      <div class="section-title">Recent runs</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><div class="section-title" style="margin-bottom:0;">Recent runs</div><button onclick="clearAllData()" style="font-size:12px; padding:4px 10px; background:transparent; border-color:var(--color-border-secondary); color:var(--color-text-tertiary);">Clear all</button></div>
       <div id="run-log-list"><div class="empty-state"><i class="ti ti-run" style="font-size:32px; display:block; margin:0 auto 8px;" aria-hidden="true"></i>No runs logged yet</div></div>
     </div>
   </div>
@@ -396,8 +396,23 @@ const plan16 = [
 function getMiles(w){ return w.days.reduce((s,d)=>{ const m=parseFloat(d.split(' ')[1]||0); return s+m; },0); }
 
 let currentWeek = 1;
-let runners = [{name:'Drew', color:'#1D9E75', initials:'DR'}];
-let runLog = [];
+let runners = JSON.parse(localStorage.getItem('hmt_runners') || 'null') || [{name:'Drew', color:'#1D9E75', initials:'DR'}];
+let runLog = JSON.parse(localStorage.getItem('hmt_runlog') || '[]');
+
+function save(){
+  localStorage.setItem('hmt_runners', JSON.stringify(runners));
+  localStorage.setItem('hmt_runlog', JSON.stringify(runLog));
+}
+
+function clearAllData(){
+  if(!confirm('Clear all logged runs and runners? This cannot be undone.')) return;
+  runLog = [];
+  runners = [{name:'Drew', color:'#1D9E75', initials:'DR'}];
+  save();
+  updateMetrics();
+  renderRunLog();
+  renderUserList();
+}
 
 function initApp(){
   const today = new Date();
@@ -479,6 +494,7 @@ function addLogEntry(){
   const notes = document.getElementById('log-notes').value;
   if(!date||!dist||!dur){ alert('Please fill in date, distance, and duration.'); return; }
   runLog.unshift({user, date, dist, dur, type, notes, id: Date.now()});
+  save();
   document.getElementById('log-dist').value='';
   document.getElementById('log-duration').value='';
   document.getElementById('log-notes').value='';
@@ -531,6 +547,7 @@ function addRunner(){
   const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   const color = COLORS[runners.length % COLORS.length];
   runners.push({name, initials, color});
+  save();
   document.getElementById('new-runner-name').value='';
   renderUserList();
 }
@@ -718,6 +735,7 @@ function importSelectedWorkouts(){
 
   // Sort log by date desc
   runLog.sort((a,b)=>b.date.localeCompare(a.date));
+  save();
 
   updateMetrics();
   renderRunLog();
