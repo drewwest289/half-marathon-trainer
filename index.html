@@ -70,19 +70,31 @@ body { font-family: var(--font-sans); background: var(--color-background-primary
 .metric-sub { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; }
 .week-row { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
 .week-row:last-child { border-bottom: none; }
+.week-row-current { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 8px; margin: 0 -8px; border-bottom: none !important; }
+.week-row-current + .week-row { border-top: none; }
 .week-label { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
-.week-bar-wrap { height: 8px; background: var(--color-background-secondary); border-radius: 4px; overflow: hidden; }
+.week-row-current .week-label { font-weight: 700; }
+.week-bar-wrap { height: 8px; background: var(--color-background-secondary); border-radius: 4px; overflow: hidden; position: relative; }
+.week-row-current .week-bar-wrap { background: var(--color-background-primary); }
 .week-bar { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.week-bar-actual { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; transition: width 0.3s; }
 .week-miles { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
+.week-miles-actual { color: var(--color-text-success); font-weight: 500; }
 .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 1rem; }
 .day-cell { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 6px; text-align: center; border: 0.5px solid transparent; cursor: default; }
 .day-cell.run { border-color: #1D9E75; }
 .day-cell.rest { opacity: 0.5; }
 .day-cell.long { border-color: #7F77DD; }
 .day-cell.cross { border-color: #378ADD; }
+.day-cell.done { background: #1D9E7514; border-color: #1D9E75 !important; opacity: 1 !important; }
+.day-cell.done-long { background: #7F77DD14; border-color: #7F77DD !important; opacity: 1 !important; }
+.day-cell.done-cross { background: #378ADD14; border-color: #378ADD !important; opacity: 1 !important; }
+.day-cell.ran-on-rest { opacity: 1 !important; border-color: #BA7517 !important; }
 .day-name { font-size: 10px; color: var(--color-text-tertiary); margin-bottom: 4px; }
 .day-type { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); }
 .day-dist { font-size: 12px; color: var(--color-text-primary); margin-top: 2px; }
+.day-actual { font-size: 10px; color: var(--color-text-success); font-weight: 600; margin-top: 3px; }
+.day-actual-rest { font-size: 10px; color: #BA7517; font-weight: 600; margin-top: 3px; }
 .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 99px; }
 .badge-green { background: #E1F5EE; color: #0F6E56; }
 .badge-purple { background: #EEEDFE; color: #3C3489; }
@@ -118,6 +130,11 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .link-banner { background: var(--color-background-info); border: 0.5px solid var(--color-border-info); border-radius: var(--border-radius-md); padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
 .link-banner-text { font-size: 13px; color: var(--color-text-info); flex: 1; }
 .empty-state { text-align: center; padding: 2rem 1rem; color: var(--color-text-secondary); font-size: 14px; }
+.week-progress-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.week-progress-label { font-size: 11px; color: var(--color-text-tertiary); width: 44px; text-align: right; flex-shrink: 0; }
+.overview-legend { display: flex; gap: 16px; margin-bottom: 12px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--color-text-secondary); }
+.legend-swatch { width: 12px; height: 8px; border-radius: 2px; }
 </style>
 
 <h2 class="sr-only">Half marathon training app with weekly plan, run logger, pace calculator, and multi-user leaderboard</h2>
@@ -152,8 +169,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
       </div>
       <div class="metric">
         <div class="metric-label">This week</div>
-        <div class="metric-value" id="this-week-miles">12</div>
-        <div class="metric-sub">miles planned</div>
+        <div class="metric-value" id="this-week-miles">0</div>
+        <div class="metric-sub" id="this-week-sub">miles logged</div>
       </div>
       <div class="metric">
         <div class="metric-label">Total logged</div>
@@ -181,11 +198,16 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
         <span><span class="badge badge-purple">Long run</span></span>
         <span><span class="badge badge-blue">Cross-train</span></span>
         <span style="font-size:12px; color:var(--color-text-tertiary); align-self:center;">Rest = off day</span>
+        <span style="font-size:12px; color:var(--color-text-success); align-self:center; font-weight:500;">✓ = completed</span>
       </div>
     </div>
 
     <div class="card">
       <div class="section-title">16-week mileage overview</div>
+      <div class="overview-legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#1D9E7533;"></div> Planned</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#1D9E75;"></div> Logged</div>
+      </div>
       <div id="mileage-overview"></div>
     </div>
   </div>
@@ -240,7 +262,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     </div>
 
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><div class="section-title" style="margin-bottom:0;">Recent runs</div><button onclick="clearAllData()" style="font-size:12px; padding:4px 10px; background:transparent; border-color:var(--color-border-secondary); color:var(--color-text-tertiary);">Clear all</button></div>
+      <div class="section-title">Recent runs</div>
       <div id="run-log-list"><div class="empty-state"><i class="ti ti-run" style="font-size:32px; display:block; margin:0 auto 8px;" aria-hidden="true"></i>No runs logged yet</div></div>
     </div>
   </div>
@@ -396,23 +418,51 @@ const plan16 = [
 function getMiles(w){ return w.days.reduce((s,d)=>{ const m=parseFloat(d.split(' ')[1]||0); return s+m; },0); }
 
 let currentWeek = 1;
-let runners = JSON.parse(localStorage.getItem('hmt_runners') || 'null') || [{name:'Drew', color:'#1D9E75', initials:'DR'}];
-let runLog = JSON.parse(localStorage.getItem('hmt_runlog') || '[]');
+let runners = [{name:'Drew', color:'#1D9E75', initials:'DR'}];
+let runLog = [];
 
-function save(){
-  localStorage.setItem('hmt_runners', JSON.stringify(runners));
-  localStorage.setItem('hmt_runlog', JSON.stringify(runLog));
+// ── Plan/Log integration helpers ──────────────────────────────────────────────
+
+/** Returns the most recent Sunday as the plan's Day 0 */
+function getPlanStart(){
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
 }
 
-function clearAllData(){
-  if(!confirm('Clear all logged runs and runners? This cannot be undone.')) return;
-  runLog = [];
-  runners = [{name:'Drew', color:'#1D9E75', initials:'DR'}];
-  save();
-  updateMetrics();
-  renderRunLog();
-  renderUserList();
+/** Format a Date object as "YYYY-MM-DD" using local time */
+function localDateStr(d){
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
 }
+
+/** Returns the calendar date string for a given plan week (1-16) and day index (0=Sun…6=Sat) */
+function getDateForCell(week, dayIdx){
+  const s = getPlanStart();
+  const d = new Date(s);
+  d.setDate(s.getDate() + (week-1)*7 + dayIdx);
+  return localDateStr(d);
+}
+
+/** Sum of logged miles for all 7 days of a given plan week */
+function getActualMilesForWeek(week){
+  const s = getPlanStart();
+  const dates = Array.from({length:7}, (_, i) => {
+    const d = new Date(s);
+    d.setDate(s.getDate() + (week-1)*7 + i);
+    return localDateStr(d);
+  });
+  return runLog.filter(r => dates.includes(r.date)).reduce((sum, r) => sum + r.dist, 0);
+}
+
+/** All log entries for a specific date string */
+function getLogsForDate(dateStr){
+  return runLog.filter(r => r.date === dateStr);
+}
+
+// ── App init ──────────────────────────────────────────────────────────────────
 
 function initApp(){
   const today = new Date();
@@ -439,7 +489,6 @@ function switchTab(t){
 function changeWeek(d){
   currentWeek = Math.max(1, Math.min(16, currentWeek+d));
   document.getElementById('week-display').textContent = 'Week '+currentWeek;
-  document.getElementById('this-week-miles').textContent = getMiles(plan16[currentWeek-1]);
   renderWeek();
 }
 
@@ -462,39 +511,97 @@ function dayBadge(d){
 function renderWeek(){
   const w = plan16[currentWeek-1];
   const grid = document.getElementById('day-grid');
-  grid.innerHTML = w.days.map((d,i)=>{
-    const miles = d.split(' ')[1]||'';
-    return `<div class="${dayClass(d)}"><div class="day-name">${DAYS[i]}</div>${dayBadge(d)}<div class="day-dist">${miles ? miles+' mi' : ''}</div></div>`;
+
+  grid.innerHTML = w.days.map((d, i) => {
+    const plannedMi = d.split(' ')[1] || '';
+    const dateStr   = getDateForCell(currentWeek, i);
+    const logs      = getLogsForDate(dateStr);
+    const actualMi  = logs.reduce((s, r) => s + r.dist, 0);
+    const isRest    = d === 'rest';
+    const isLong    = d.startsWith('long') || d.startsWith('race');
+    const isCross   = d.startsWith('cross');
+    const hasDone   = logs.length > 0;
+
+    // Choose cell class
+    let cellClass = dayClass(d);
+    if(hasDone && !isRest){
+      if(isLong)       cellClass = 'day-cell done-long';
+      else if(isCross) cellClass = 'day-cell done-cross';
+      else             cellClass = 'day-cell done';
+    } else if(hasDone && isRest){
+      cellClass = 'day-cell ran-on-rest';
+    }
+
+    // Completion indicator
+    let actualHtml = '';
+    if(hasDone && !isRest){
+      actualHtml = `<div class="day-actual">✓ ${actualMi.toFixed(1)}mi</div>`;
+    } else if(hasDone && isRest){
+      actualHtml = `<div class="day-actual-rest">${actualMi.toFixed(1)}mi</div>`;
+    }
+
+    return `<div class="${cellClass}">
+      <div class="day-name">${DAYS[i]}</div>
+      ${dayBadge(d)}
+      <div class="day-dist">${plannedMi ? plannedMi+' mi' : ''}</div>
+      ${actualHtml}
+    </div>`;
   }).join('');
+
+  // Update metrics
   document.getElementById('current-week-num').textContent = currentWeek;
-  document.getElementById('this-week-miles').textContent = getMiles(w);
+  const thisWeekActual  = getActualMilesForWeek(currentWeek);
+  const thisWeekPlanned = getMiles(w);
+  document.getElementById('this-week-miles').textContent = thisWeekActual.toFixed(1);
+  document.getElementById('this-week-sub').textContent   =
+    `of ${thisWeekPlanned} mi planned`;
 }
 
 function renderOverview(){
   const maxM = Math.max(...plan16.map(getMiles));
   const el = document.getElementById('mileage-overview');
-  el.innerHTML = plan16.map(w=>{
-    const m = getMiles(w);
-    const pct = Math.round((m/maxM)*100);
-    const isRace = w.week===16;
-    return `<div class="week-row">
+
+  el.innerHTML = plan16.map(w => {
+    const planned   = getMiles(w);
+    const actual    = getActualMilesForWeek(w.week);
+    const plannedPct = Math.round((planned / maxM) * 100);
+    const actualPct  = Math.min(plannedPct, Math.round((actual / maxM) * 100)); // capped at planned width visually
+    const overPct    = actual > planned ? Math.min(plannedPct, Math.round((actual / maxM) * 100)) : 0;
+    const isRace     = w.week === 16;
+    const isCurrent  = w.week === currentWeek;
+    const planColor  = isRace ? '#7F77DD' : '#1D9E75';
+
+    // Miles label: show "X.X / Y mi" when something is logged, else "Y mi"
+    let milesHtml = '';
+    if(actual > 0){
+      const overUnder = actual >= planned
+        ? `<span class="week-miles-actual">${actual.toFixed(1)}</span><span style="color:var(--color-text-tertiary);"> / ${planned} mi${isRace?' 🏁':''}</span>`
+        : `<span class="week-miles-actual">${actual.toFixed(1)}</span><span style="color:var(--color-text-tertiary);"> / ${planned} mi${isRace?' 🏁':''}</span>`;
+      milesHtml = `<div class="week-miles">${overUnder}</div>`;
+    } else {
+      milesHtml = `<div class="week-miles">${planned} mi${isRace?' 🏁':''}</div>`;
+    }
+
+    return `<div class="week-row${isCurrent?' week-row-current':''}">
       <div class="week-label">Week ${w.week}</div>
-      <div class="week-bar-wrap"><div class="week-bar" style="width:${pct}%; background:${isRace?'#7F77DD':'#1D9E75'};"></div></div>
-      <div class="week-miles">${m} mi${isRace?' 🏁':''}</div>
+      <div class="week-bar-wrap">
+        <div class="week-bar" style="width:${plannedPct}%; background:${planColor}2a;"></div>
+        ${actual > 0 ? `<div class="week-bar-actual" style="width:${actualPct}%; background:${planColor};"></div>` : ''}
+      </div>
+      ${milesHtml}
     </div>`;
   }).join('');
 }
 
 function addLogEntry(){
-  const user = document.getElementById('log-user').value;
-  const date = document.getElementById('log-date').value;
-  const dist = parseFloat(document.getElementById('log-dist').value);
-  const dur = parseInt(document.getElementById('log-duration').value);
-  const type = document.getElementById('log-type').value;
+  const user  = document.getElementById('log-user').value;
+  const date  = document.getElementById('log-date').value;
+  const dist  = parseFloat(document.getElementById('log-dist').value);
+  const dur   = parseInt(document.getElementById('log-duration').value);
+  const type  = document.getElementById('log-type').value;
   const notes = document.getElementById('log-notes').value;
   if(!date||!dist||!dur){ alert('Please fill in date, distance, and duration.'); return; }
   runLog.unshift({user, date, dist, dur, type, notes, id: Date.now()});
-  save();
   document.getElementById('log-dist').value='';
   document.getElementById('log-duration').value='';
   document.getElementById('log-notes').value='';
@@ -506,15 +613,30 @@ function addLogEntry(){
 function updateMetrics(){
   const total = runLog.reduce((s,r)=>s+r.dist, 0);
   document.getElementById('total-logged').textContent = total.toFixed(1);
-  const planned = plan16.slice(0,currentWeek).reduce((s,w)=>s+getMiles(w),0);
-  const pct = planned>0 ? Math.min(100,Math.round((total/planned)*100)) : 0;
+
+  // This week actual vs planned
+  const thisWeekActual  = getActualMilesForWeek(currentWeek);
+  const thisWeekPlanned = getMiles(plan16[currentWeek-1]);
+  document.getElementById('this-week-miles').textContent = thisWeekActual.toFixed(1);
+  document.getElementById('this-week-sub').textContent   = `of ${thisWeekPlanned} mi planned`;
+
+  // Completion % (actual vs planned miles through current week)
+  const plannedThrough = plan16.slice(0, currentWeek).reduce((s,w)=>s+getMiles(w), 0);
+  const pct = plannedThrough > 0 ? Math.min(100, Math.round((total / plannedThrough) * 100)) : 0;
   document.getElementById('completion-pct').textContent = pct+'%';
+
+  // Refresh plan visuals so completions show up immediately
+  renderWeek();
+  renderOverview();
 }
 
 function renderRunLog(){
   const el = document.getElementById('run-log-list');
-  if(runLog.length===0){ el.innerHTML='<div class="empty-state"><i class="ti ti-run" style="font-size:32px; display:block; margin:0 auto 8px;" aria-hidden="true"></i>No runs logged yet</div>'; return; }
-  const paceStr = (dist,dur)=>{ const pm = dur/dist; const m=Math.floor(pm); const s=Math.round((pm-m)*60); return m+':'+(s<10?'0':'')+s; };
+  if(runLog.length===0){
+    el.innerHTML='<div class="empty-state"><i class="ti ti-run" style="font-size:32px; display:block; margin:0 auto 8px;" aria-hidden="true"></i>No runs logged yet</div>';
+    return;
+  }
+  const paceStr = (dist,dur)=>{ const pm=dur/dist; const m=Math.floor(pm); const s=Math.round((pm-m)*60); return m+':'+(s<10?'0':'')+s; };
   el.innerHTML = runLog.slice(0,20).map(r=>`
     <div class="log-entry">
       <div class="log-date">${r.date}</div>
@@ -524,7 +646,7 @@ function renderRunLog(){
 }
 
 function renderUserList(){
-  const el = document.getElementById('user-list');
+  const el  = document.getElementById('user-list');
   const sel = document.getElementById('log-user');
   const totals = {};
   runners.forEach(r=>totals[r.name]=0);
@@ -547,7 +669,6 @@ function addRunner(){
   const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   const color = COLORS[runners.length % COLORS.length];
   runners.push({name, initials, color});
-  save();
   document.getElementById('new-runner-name').value='';
   renderUserList();
 }
@@ -561,18 +682,18 @@ function calcPace(){
   const totalSec = h*3600 + m*60 + s;
   if(!dist||!totalSec){ alert('Fill in distance and time'); return; }
   const perMileSec = totalSec/dist;
-  const perKmSec = totalSec/(dist*1.60934);
-  const speed = (dist/(totalSec/3600));
+  const perKmSec   = totalSec/(dist*1.60934);
+  const speed      = (dist/(totalSec/3600));
   const fmt = sec => { const mn=Math.floor(sec/60); const sc=Math.round(sec%60); return mn+':'+(sc<10?'0':'')+sc; };
   document.getElementById('pace-per-mile').textContent = fmt(perMileSec);
-  document.getElementById('pace-per-km').textContent = fmt(perKmSec);
-  document.getElementById('pace-speed').textContent = speed.toFixed(1);
-  document.getElementById('pace-result').style.display='flex';
+  document.getElementById('pace-per-km').textContent   = fmt(perKmSec);
+  document.getElementById('pace-speed').textContent    = speed.toFixed(1);
+  document.getElementById('pace-result').style.display = 'flex';
   const paces = [
-    {label:'Easy run', factor:1.2, note:'Conversational pace'},
-    {label:'Long run', factor:1.15, note:'Comfortable effort'},
-    {label:'Tempo', factor:0.95, note:'Comfortably hard'},
-    {label:'Interval', factor:0.88, note:'Hard effort'},
+    {label:'Easy run',  factor:1.2,  note:'Conversational pace'},
+    {label:'Long run',  factor:1.15, note:'Comfortable effort'},
+    {label:'Tempo',     factor:0.95, note:'Comfortably hard'},
+    {label:'Interval',  factor:0.88, note:'Hard effort'},
   ];
   document.getElementById('training-paces').innerHTML = paces.map(p=>`
     <div class="tip-card">
@@ -589,46 +710,33 @@ document.getElementById('pace-dist').addEventListener('change', function(){
 let parsedWorkouts = [];
 
 function parseWatchData(){
-  const raw = document.getElementById('watch-json').value.trim();
-  const el = document.getElementById('watch-result');
+  const raw     = document.getElementById('watch-json').value.trim();
+  const el      = document.getElementById('watch-result');
   const listCard = document.getElementById('watch-workout-list-card');
 
   if(!raw){ el.innerHTML='<div style="color:var(--color-text-danger);font-size:13px;">Please paste some JSON first.</div>'; return; }
 
-  // Sanitize non-breaking spaces Apple embeds in device names
-  const clean = raw.replace(/\u00a0/g, ' ');
-
+  const clean = raw.replace(/ /g, ' ');
   let d;
   try { d = JSON.parse(clean); }
   catch(e){ el.innerHTML='<div style="color:var(--color-text-danger);font-size:13px;">Invalid JSON — check for missing brackets or commas. Error: '+e.message+'</div>'; return; }
 
-  // --- Detect format ---
   let workouts = [];
-
-  // Format A: Health Auto Export full file { data: { workouts: [...], metrics: [...] } }
   if(d && d.data && Array.isArray(d.data.workouts)){
     workouts = d.data.workouts.map(w => normalizeHAEWorkout(w));
-  }
-  // Format B: HAE single workout export (already a workout object with 'name', 'start', 'distance')
-  else if(d && d.name && d.start){
+  } else if(d && d.name && d.start){
     workouts = [normalizeHAEWorkout(d)];
-  }
-  // Format C: Legacy Apple Health single object { workoutActivityType, duration, totalDistance, startDate }
-  else if(d && (d.workoutActivityType || d.totalDistance || d.duration)){
+  } else if(d && (d.workoutActivityType || d.totalDistance || d.duration)){
     workouts = [normalizeLegacyAppleHealth(d)];
-  }
-  // Format D: Array of workouts
-  else if(Array.isArray(d) && d.length > 0){
+  } else if(Array.isArray(d) && d.length > 0){
     if(d[0].name && d[0].start) workouts = d.map(w => normalizeHAEWorkout(w));
     else workouts = d.map(w => normalizeLegacyAppleHealth(w));
-  }
-  else {
+  } else {
     el.innerHTML='<div style="color:var(--color-text-danger);font-size:13px;">Could not recognize this JSON format. Expected Health Auto Export data with a <code>data.workouts</code> array.</div>';
     return;
   }
 
   workouts = workouts.filter(w => w !== null);
-
   if(!workouts.length){
     el.innerHTML='<div style="color:var(--color-text-danger);font-size:13px;">No workouts found in this JSON.</div>';
     return;
@@ -642,35 +750,24 @@ function parseWatchData(){
 
 function normalizeHAEWorkout(w){
   try {
-    // Distance: w.distance is { qty, units } or w.walkingAndRunningDistance is an array
     let distMi = null;
     if(w.distance && typeof w.distance === 'object' && w.distance.qty){
-      const qty = parseFloat(w.distance.qty);
+      const qty   = parseFloat(w.distance.qty);
       const units = (w.distance.units||'mi').toLowerCase();
       distMi = units.includes('km') ? qty * 0.621371 : qty;
     }
-
-    // Duration: w.duration is in seconds
-    const durMin = w.duration ? Math.round(parseFloat(w.duration) / 60) : null;
-
-    // Date: w.start like "2026-05-27 06:00:38 -0400"
+    const durMin  = w.duration ? Math.round(parseFloat(w.duration) / 60) : null;
     const dateStr = w.start ? w.start.substring(0,10) : null;
-
-    // Avg heart rate
     let hr = null;
     if(w.avgHeartRate && typeof w.avgHeartRate === 'object') hr = Math.round(parseFloat(w.avgHeartRate.qty));
     else if(w.heartRate && w.heartRate.avg) hr = Math.round(parseFloat(w.heartRate.avg.qty));
-
-    // Run type guess
     const name = (w.name || '').toLowerCase();
     let type = 'Easy';
     if(name.includes('interval') || name.includes('hiit')) type = 'Intervals';
     else if(name.includes('walk')) type = 'Cross-train';
     else if(name.includes('other')) type = 'Cross-train';
     else if(distMi && distMi >= 8) type = 'Long run';
-
     const isRun = name.includes('run');
-
     return { date: dateStr, distMi, durMin, hr, type, name: w.name || 'Workout', isRun };
   } catch(e){ return null; }
 }
@@ -678,8 +775,8 @@ function normalizeHAEWorkout(w){
 function normalizeLegacyAppleHealth(d){
   try {
     const distRaw = d.totalDistance || d.distance;
-    const distMi = distRaw ? parseFloat(distRaw) : null;
-    const durMin = d.duration ? Math.round(parseFloat(d.duration)/60) : null;
+    const distMi  = distRaw ? parseFloat(distRaw) : null;
+    const durMin  = d.duration ? Math.round(parseFloat(d.duration)/60) : null;
     const dateStr = d.startDate ? d.startDate.substring(0,10) : new Date().toISOString().substring(0,10);
     return { date: dateStr, distMi, durMin, hr: null, type: 'Easy', name: 'Run', isRun: true };
   } catch(e){ return null; }
@@ -688,11 +785,11 @@ function normalizeLegacyAppleHealth(d){
 function renderWatchWorkoutList(){
   const el = document.getElementById('watch-workout-list');
   el.innerHTML = parsedWorkouts.map((w,i)=>{
-    const pace = (w.distMi && w.durMin) ? paceStr(w.distMi, w.durMin) : '--';
-    const dist = w.distMi ? w.distMi.toFixed(2)+' mi' : 'no dist';
-    const dur = w.durMin ? w.durMin+' min' : '--';
-    const hrLabel = w.hr ? ` · ${w.hr} bpm avg` : '';
-    const checked = w.isRun ? 'checked' : '';
+    const pace      = (w.distMi && w.durMin) ? paceStr(w.distMi, w.durMin) : '--';
+    const dist      = w.distMi ? w.distMi.toFixed(2)+' mi' : 'no dist';
+    const dur       = w.durMin ? w.durMin+' min' : '--';
+    const hrLabel   = w.hr ? ` · ${w.hr} bpm avg` : '';
+    const checked   = w.isRun ? 'checked' : '';
     const typeColor = {'Easy':'#1D9E75','Long run':'#7F77DD','Cross-train':'#378ADD','Intervals':'#BA7517'}[w.type]||'#999';
     return `<div class="log-entry" style="grid-template-columns:24px 1fr auto;">
       <input type="checkbox" id="ww-${i}" ${checked} style="margin-top:2px;">
@@ -712,12 +809,7 @@ function selectAllRuns(onlyRuns){
   parsedWorkouts.forEach((w,i)=>{
     const cb = document.getElementById('ww-'+i);
     if(cb) cb.checked = onlyRuns ? w.isRun : false;
-    if(!onlyRuns && cb) cb.checked = false;
   });
-  // selectAllRuns(true) = select all runs, selectAllRuns(false) = clear all
-  if(onlyRuns === false){
-    parsedWorkouts.forEach((_,i)=>{ const cb=document.getElementById('ww-'+i); if(cb) cb.checked=false; });
-  }
 }
 
 function importSelectedWorkouts(){
@@ -733,10 +825,7 @@ function importSelectedWorkouts(){
     imported++;
   });
 
-  // Sort log by date desc
   runLog.sort((a,b)=>b.date.localeCompare(a.date));
-  save();
-
   updateMetrics();
   renderRunLog();
   renderUserList();
@@ -744,7 +833,7 @@ function importSelectedWorkouts(){
   const msg = skipped > 0
     ? `Imported ${imported} run${imported>1?'s':''}. Skipped ${skipped} (no distance/duration data).`
     : `Imported ${imported} run${imported>1?'s':''} successfully.`;
-  resultEl.innerHTML=`<div style="color:var(--color-text-success);font-size:13px;"><i class="ti ti-check" aria-hidden="true"></i> ${msg} Switch to the <strong>Log</strong> tab to see them.</div>`;
+  resultEl.innerHTML=`<div style="color:var(--color-text-success);font-size:13px;"><i class="ti ti-check" aria-hidden="true"></i> ${msg} Switch to the <strong>Plan</strong> tab to see them on the schedule.</div>`;
 }
 
 function paceStr(dist, dur){ const pm=dur/dist; const m=Math.floor(pm); const s=Math.round((pm-m)*60); return m+':'+(s<10?'0':'')+s; }
